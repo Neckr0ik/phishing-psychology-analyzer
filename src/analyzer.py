@@ -4,7 +4,8 @@ Scores text against each manipulation vector using keyword coverage and VADER se
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from functools import lru_cache
 from typing import Dict, List, Tuple
 import re
 
@@ -42,13 +43,24 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower().strip())
 
 
+@lru_cache(maxsize=None)
+def _pattern(keyword: str) -> "re.Pattern[str]":
+    # Whole-word / whole-phrase match: "won" must not match "wonderful", "admin" not "administrator".
+    return re.compile(rf"(?<!\w){re.escape(keyword.lower())}(?!\w)")
+
+
+def find_keywords(text: str, keywords: List[str]) -> List[str]:
+    """Distinct keywords (in list order) present in `text` as whole words/phrases."""
+    return [kw for kw in dict.fromkeys(k.lower() for k in keywords) if _pattern(kw).search(text)]
+
+
 def _keyword_coverage(text: str, keywords: List[str]) -> Tuple[float, List[str]]:
     """
     Returns (coverage_ratio 0-1, matched_keyword_list).
     Coverage = distinct keywords found / total keywords in vector.
     Distinct-keyword scoring prevents keyword-stuffing inflation.
     """
-    matched = [kw for kw in keywords if kw in text]
+    matched = find_keywords(text, keywords)
     coverage = len(matched) / max(len(keywords), 1)
     return coverage, matched
 
@@ -57,10 +69,9 @@ def _score_vector(text: str, vector_id: str) -> VectorResult:
     vec = MANIPULATION_VECTORS[vector_id]
     coverage, matched = _keyword_coverage(text, vec["keywords"])
 
-    # Scale: full coverage (all keywords present) = 90 base points.
-    # Anything beyond 3 unique matches saturates toward 90.
-    unique_hits = min(len(matched), len(vec["keywords"]))
-    base = min((unique_hits / max(len(vec["keywords"]) * 0.15, 1)) * 100, 90)
+    # Base score: matching 15% of a vector's keywords (about 3-5 distinct cues) reaches
+    # the 90-point cap; the vector weight then scales it (final score capped at 100).
+    base = min((len(matched) / max(len(vec["keywords"]) * 0.15, 1)) * 100, 90)
 
     score = min(base * vec["weight"], 100.0)
     return VectorResult(
