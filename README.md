@@ -1,133 +1,121 @@
 # Phishing Psychology Analyzer
 
-**Core question:** What makes a phishing email work — and can we detect it before a human falls for it?
+> **Resumen:** Analiza un texto (correo, SMS, mensaje) y detecta ocho palancas psicológicas típicas de la ingeniería social: urgencia, autoridad, miedo, escasez, reciprocidad, prueba social, falsa familiaridad y curiosidad. Relaciona cada una con el sesgo cognitivo que explota y calcula un puntaje heurístico de presión persuasiva. No es un detector de phishing: complementa, no sustituye, la revisión de remitente, enlaces y encabezados.
 
-This tool analyzes text for the eight psychological manipulation vectors used in social engineering attacks. It maps detected tactics to the cognitive biases they exploit, produces a composite risk score, and generates visualizations for security awareness training and threat triage.
+*Part of Giovanni Oliveira's Hybrid Intelligence portfolio — see https://github.com/Neckr0ik*
+
+**Core question:** what psychological levers does a message pull, and how many does it stack at once?
+
+Most phishing filters look at URLs, headers and sender reputation. This tool looks at the **wording**. It detects eight manipulation vectors, maps each to the cognitive bias it exploits and to the closest MITRE ATT&CK technique, and combines them into a 0–100 composite score with red flags. The intended uses are security-awareness training and helping a human triage suspicious messages.
 
 ---
 
 ## Sample output
 
-```
-Phishing Psychology Analyzer
-============================================================
+Real output of `python main.py --no-charts` (excerpt):
 
-  Critical: Spear Phishing (CEO Fraud)
-  [################    ] 83/100  [CRIT] CRITICAL RISK
-  Dominant vectors: Authority / Impersonation | Urgency / Time Pressure | Fear / Threat Appraisal
+```
+  Spear Phishing (CEO Fraud)
+  [##################  ] 92/100  [CRIT] CRITICAL RISK
+  Dominant vectors: Urgency / Time Pressure | Fear / Threat Appraisal | Scarcity / Exclusivity
   [!] Authority + threat combination — classic spear-phishing pattern
-  [!] Artificial urgency — suppresses System 2 deliberation
   [!] CRITICAL: Multiple coordinated manipulation vectors detected
 
-  Low: Legitimate Bank Notification
-  [###                 ] 8/100  [LOW ] LOW RISK
-  Dominant vectors: Familiarity / False Intimacy
+  Marketing Email (legitimate)
+  [###########         ] 55/100  [HIGH] HIGH RISK
+  Dominant vectors: Scarcity / Exclusivity | Social Proof / Consensus
+
+  Bank Notification (legitimate)
+  [####                ] 22/100  [LOW] LOW RISK
 ```
+
+The legitimate marketing email scores HIGH because it really does use scarcity and social proof. **The score measures persuasion pressure, not malice.**
 
 ---
 
-## The psychology behind social engineering
+## The eight vectors
 
-Most security tools detect phishing by analyzing URLs, headers, or sender reputation. This tool operates one layer deeper — at the **cognitive level**. Every effective social engineering attack exploits the gap between how humans *think* they make decisions and how they *actually* make them.
-
-| Manipulation Vector | Cognitive Bias Exploited | Why It Works |
+| Vector | Cognitive bias exploited | ATT&CK context |
 |:---|:---|:---|
-| **Urgency / Time Pressure** | Loss Aversion + Availability Heuristic | Compressed time horizons prevent System 2 (deliberate) reasoning |
-| **Authority / Impersonation** | Authority Bias + Halo Effect | Institutional trust cues suppress skeptical evaluation |
-| **Fear / Threat Appraisal** | Negativity Bias + Amygdala Activation | Threat response elevates cortisol, narrowing analytical processing |
-| **Scarcity / Exclusivity** | Scarcity Heuristic + FOMO | Perceived rarity elevates subjective value and accelerates commitment |
-| **Reciprocity / Reward** | Reciprocity Norm + Variable Reward | Unsolicited gifts create social obligation to comply |
-| **Social Proof / Consensus** | Bandwagon Effect | Perceived group consensus normalizes the requested action |
-| **Familiarity / False Intimacy** | Mere Exposure Effect | Contextual mirroring creates false sense of prior relationship |
-| **Curiosity / Information Gap** | Zeigarnik Effect | Partial information creates aversive arousal compelling gap-closure |
+| **Urgency / Time Pressure** | Loss aversion, availability heuristic | T1566, T1598 |
+| **Authority / Impersonation** | Authority bias, halo effect | T1656, T1585 |
+| **Fear / Threat Appraisal** | Negativity bias, loss aversion | T1566 |
+| **Scarcity / Exclusivity** | Scarcity heuristic, FOMO (Brock, 1968) | T1566 |
+| **Reciprocity / Reward Baiting** | Reciprocity norm (Cialdini, 1984) | T1566 |
+| **Social Proof / Consensus** | Social proof, bandwagon effect | T1566 |
+| **Familiarity / False Intimacy** | Mere-exposure effect, in-group bias | T1585.001, T1656 |
+| **Curiosity / Information Gap** | Information gap (Loewenstein, 1994) | T1566, T1204 |
 
-*The most dangerous attacks combine three or more vectors simultaneously — what Cialdini (1984) calls "influence stacking," where compliance triggers compound each other's effect.*
-
----
-
-## Quick start
-
-```bash
-git clone https://github.com/Neckr0ik/phishing-psychology-analyzer.git
-cd phishing-psychology-analyzer
-pip install -r requirements.txt
-python main.py
-```
-
-Analyze your own text:
-
-```bash
-python main.py --text "URGENT: Your account has been compromised. Verify immediately."
-```
-
-Runtime: ~3 seconds for the full 8-sample batch.
-
----
-
-## Architecture
-
-```
-phishing-psychology-analyzer/
-├── main.py               # CLI entry point, batch runner
-├── src/
-│   ├── taxonomy.py       # 8 manipulation vectors + MITRE ATT&CK refs + bias mappings
-│   ├── analyzer.py       # Scoring engine: keyword coverage + VADER + multi-vector amplification
-│   ├── reporter.py       # Radar charts, comparison bar, heatmap, markdown report
-│   └── samples.py        # 8 sample texts spanning LOW to CRITICAL risk
-└── output/               # Generated charts and report (git-ignored)
-```
+ATT&CK catalogues adversary techniques. It does not classify psychological levers, so the IDs above are the closest techniques for the delivery channel, given for context. They are not an official ATT&CK mapping.
 
 ---
 
 ## Scoring methodology
 
-For each vector:
+The code in `src/analyzer.py` does the following:
 
-1. **Keyword coverage** — distinct keywords found ÷ total keywords in vector (prevents stuffing)
-2. **Weight multiplier** — fear/threat vectors carry higher weights (empirically more effective)
-3. **Multi-vector amplification** — 3+ active vectors trigger a 20–35% composite boost
-4. **VADER sentiment correlation** — high negative sentiment amplifies threat-based vector scores
+1. **Keyword matching.** Distinct whole-word/phrase matches per vector, so repeating "act now" five times counts once, and "won" does not match "wonderful".
+2. **Vector score.** `base = min(matches / (0.15 × list_size) × 100, 90)`, then `score = min(base × weight, 100)`. The weights (fear 1.8, urgency 1.5, authority 1.4 …) are design choices, not empirical estimates.
+3. **Composite.** The mean of the top 3 vectors, multiplied by **1.10 / 1.20 / 1.30** when 3 / 4 / 5+ vectors are active (score > 12), and by `1 + 0.2 × VADER_neg` when VADER negativity exceeds 0.3. It is capped at 100.
+4. **Risk bands.** LOW < 25 ≤ MEDIUM < 50 ≤ HIGH < 75 ≤ CRITICAL.
 
-```python
-# Core formula
-coverage = distinct_keywords_found / total_keywords_in_vector
-base_score = min((coverage / 0.15) * 100, 90)
-vector_score = min(base_score * weight, 100)
+The tests in `tests/test_analyzer.py` pin these formulas, so this section and the code stay in sync.
 
-# Multi-vector amplification
-if active_vectors >= 4:
-    composite *= 1.35
-elif active_vectors >= 3:
-    composite *= 1.20
+---
+
+## Install, run, test
+
+```bash
+git clone https://github.com/Neckr0ik/phishing-psychology-analyzer.git
+cd phishing-psychology-analyzer
+pip install -r requirements.txt
+
+python main.py                                     # 8 fictional samples -> charts + report in output/
+python main.py --text "URGENT: verify your account immediately."
+python main.py --file suspicious_email.txt --json  # JSON for pipelines / SOAR triage notes
+python main.py --no-charts
+
+pytest -q                                          # offline test suite
 ```
 
----
+Python 3.11+. CI runs the tests on Python 3.11 and 3.12 (`.github/workflows/tests.yml`).
 
-## Output charts
-
-| Chart | Description |
+| Output | Description |
 |---|---|
-| `radar_*.png` | Per-sample radar chart across all 8 manipulation vectors |
-| `comparison_all.png` | Horizontal bar chart ranking all samples by composite score |
-| `heatmap_vectors.png` | Matrix heatmap: samples × vectors with score values |
-| `analysis_report.md` | Full markdown report with red flags, bias mappings, and matched keywords |
+| `radar_*.png` | Per-sample radar across the 8 vectors |
+| `comparison_all.png` | All samples ranked by composite score |
+| `heatmap_vectors.png` | Samples × vectors matrix |
+| `analysis_report.md` | Red flags, biases, matched keywords and ATT&CK context per sample |
 
----
+## Architecture
+
+```
+phishing-psychology-analyzer/
+├── main.py           # CLI: batch, --text, --file, --json
+├── src/
+│   ├── taxonomy.py   # 8 vectors, keywords, biases, ATT&CK context, risk bands
+│   ├── analyzer.py   # whole-word matching, vector scores, composite, red flags
+│   ├── reporter.py   # charts + markdown report
+│   └── samples.py    # 8 fictional messages (4 attacks, 1 ambiguous, 3 legitimate)
+└── tests/
+```
+
+## Limitations
+
+- **Not a phishing classifier.** It has not been trained or evaluated on a labelled phishing corpus, so no accuracy, precision or recall numbers exist for it. A well-written phish with few trigger words can score LOW.
+- **False positives on marketing.** Promotions use scarcity, social proof and urgency by design.
+- **English only.** The keyword lists and VADER are English. Spanish and Portuguese phishing (common in LATAM) is not covered.
+- **Wording only.** Sender, links, attachments and headers are ignored. Use it next to technical controls, never instead of them.
+- **Hand-tuned weights.** All weights and thresholds are editable in `src/taxonomy.py` and `src/analyzer.py`.
 
 ## References
 
-- Cialdini, R. B. (1984). *Influence: The Psychology of Persuasion.* Harper Business.
+- Brock, T. C. (1968). Implications of commodity theory for value change. In *Psychological Foundations of Attitudes*. Academic Press.
+- Cialdini, R. B. (1984). *Influence: The Psychology of Persuasion.* William Morrow.
 - Kahneman, D. (2011). *Thinking, Fast and Slow.* Farrar, Straus and Giroux.
 - Loewenstein, G. (1994). The psychology of curiosity: A review and reinterpretation. *Psychological Bulletin, 116*(1), 75–98.
-- MITRE ATT&CK Framework. (2024). *Enterprise Techniques.* attack.mitre.org
-
----
-
-## Skills demonstrated
-
-`Python` · `Behavioral Psychology` · `Cybersecurity (MITRE ATT&CK)` · `NLP (VADER)` · `Cognitive Bias Analysis` · `Social Engineering Defense` · `Matplotlib` · `Security Awareness`
-
----
+- Sherif, M. (1936). *The Psychology of Social Norms.* Harper.
+- MITRE ATT&CK, Enterprise techniques: attack.mitre.org
 
 ## License
 
