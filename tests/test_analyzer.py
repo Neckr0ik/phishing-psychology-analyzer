@@ -65,3 +65,48 @@ def test_multi_vector_amplification_matches_readme(scores, expected):
 
 def test_vader_negativity_amplifies():
     assert _composite(_vectors([30, 0, 0]), vader_neg=0.5) == 11.0
+
+
+PLAIN = ("URGENT: your account has been compromised. Our security team detected unauthorized "
+         "access. Verify immediately or your account will be suspended within 24 hours.")
+
+
+def test_invisible_characters_do_not_hide_keywords():
+    hidden = PLAIN.replace("URGENT", "URG​ENT").replace("immediately", "imm​ediately") \
+                  .replace("compromised", "compro­mised").replace("suspended", "sus‍pended")
+    plain, obf = analyze(PLAIN), analyze(hidden)
+    assert obf.composite_score >= plain.composite_score >= 75
+    assert "urgent" in obf.vectors["urgency"].matched_keywords
+    assert "immediately" in obf.vectors["urgency"].matched_keywords
+    assert obf.hidden_characters == 4
+    assert any("Invisible characters" in f for f in obf.flags)
+    assert not any("Invisible characters" in f for f in plain.flags)
+
+
+def test_nfkc_and_curly_quotes():
+    r = analyze("ＵＲＧＥＮＴ: don’t wait, act now")  # full-width URGENT
+    assert {"urgent", "don't wait", "act now"} <= set(r.vectors["urgency"].matched_keywords)
+
+
+def test_emoji_zwj_is_not_flagged():
+    r = analyze("Family photo \U0001F468‍\U0001F469‍\U0001F467 from the weekend")
+    assert r.hidden_characters == 0 and r.flags == []
+
+
+def test_false_intimacy_needs_two_cues():
+    one = analyze("Please log in to your account to see the update.")
+    assert one.vectors["familiarity"].score > 20
+    assert not any("False intimacy" in f for f in one.flags)
+    two = analyze("As discussed, please log in to your account to see the update.")
+    assert any("False intimacy" in f for f in two.flags)
+
+
+def test_short_keyword_list_floor():
+    # base = min(matches / max(0.15 * list_size, 1) * 100, 90): the divisor never drops below 1
+    from src import analyzer
+    from src.taxonomy import MANIPULATION_VECTORS as V
+    V["_tiny"] = {**V["curiosity"], "keywords": ["secret", "hidden"], "weight": 1.0}
+    try:
+        assert analyzer._score_vector("a secret", "_tiny").score == 90.0
+    finally:
+        del V["_tiny"]
