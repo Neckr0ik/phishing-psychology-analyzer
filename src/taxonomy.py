@@ -15,8 +15,8 @@ MANIPULATION_VECTORS = {
     "urgency": {
         "label": "Urgency / Time Pressure",
         "bias": "Loss Aversion + Availability Heuristic",
-        "mechanism": "Artificially compressed time horizons prevent System 2 (deliberate) reasoning, "
-                     "forcing reactive System 1 responses based on perceived loss.",
+        "mechanism": "Artificially compressed deadlines may leave less room for deliberate "
+                     "(System 2) reasoning and push quick, reactive responses driven by perceived loss.",
         "mitre_ref": "T1566 Phishing; T1598 Phishing for Information",
         "keywords": [
             "urgent", "immediately", "right now", "act now", "expires", "expiring",
@@ -32,8 +32,8 @@ MANIPULATION_VECTORS = {
     "authority": {
         "label": "Authority / Impersonation",
         "bias": "Authority Bias + Halo Effect",
-        "mechanism": "Invokes legitimate institutional trust cues, transferring credibility "
-                     "to the malicious actor and suppressing skeptical evaluation.",
+        "mechanism": "Invokes legitimate institutional trust cues, which may lend the sender "
+                     "borrowed credibility and make readers less sceptical.",
         "mitre_ref": "T1656 Impersonation; T1585 Establish Accounts",
         "keywords": [
             "official", "verified", "authorized", "certified", "compliance",
@@ -50,8 +50,8 @@ MANIPULATION_VECTORS = {
     "fear_threat": {
         "label": "Fear / Threat Appraisal",
         "bias": "Negativity Bias + Loss Aversion + Threat Appraisal",
-        "mechanism": "Activates the amygdala-driven threat response, elevating cortisol and "
-                     "narrowing attention to the perceived threat while reducing analytical processing.",
+        "mechanism": "Threat wording may trigger a fear response that narrows attention to the "
+                     "perceived danger and leaves less room for careful analysis.",
         "mitre_ref": "T1566 Phishing",
         "keywords": [
             "suspended", "compromised", "hacked", "breach", "breach detected",
@@ -69,8 +69,8 @@ MANIPULATION_VECTORS = {
     "scarcity": {
         "label": "Scarcity / Exclusivity",
         "bias": "Scarcity Heuristic + FOMO",
-        "mechanism": "Perceived scarcity elevates subjective value (Brock, 1968) and "
-                     "triggers fear of missing out, accelerating commitment decisions.",
+        "mechanism": "Perceived scarcity may raise an item's subjective value (Brock, 1968) and "
+                     "create fear of missing out, which may speed up commitment decisions.",
         "mitre_ref": "T1566 Phishing",
         "keywords": [
             "limited", "exclusive", "only a few", "selected", "special offer",
@@ -86,9 +86,9 @@ MANIPULATION_VECTORS = {
     "reciprocity": {
         "label": "Reciprocity / Reward Baiting",
         "bias": "Reciprocity Norm + Variable Reward",
-        "mechanism": "Unsolicited gifts activate the reciprocity norm (Cialdini, 1984), "
-                     "creating social obligation. Variable reward schedules produce dopaminergic "
-                     "engagement similar to gambling mechanisms.",
+        "mechanism": "Unsolicited gifts may invoke the reciprocity norm (Cialdini, 1984) "
+                     "and a sense of obligation; the promise of an uncertain prize may hold "
+                     "attention the way games of chance do.",
         "mitre_ref": "T1566 Phishing",
         "keywords": [
             "free", "gift", "reward", "prize", "won", "winner", "congratulations",
@@ -104,9 +104,9 @@ MANIPULATION_VECTORS = {
     "social_proof": {
         "label": "Social Proof / Consensus",
         "bias": "Social Proof + Bandwagon Effect",
-        "mechanism": "Uncertainty about correct behavior leads individuals to assume "
-                     "that others' actions reflect superior knowledge (Sherif, 1936), "
-                     "normalizing compliance with the request.",
+        "mechanism": "When unsure what to do, people may assume that others' actions "
+                     "reflect better knowledge (Sherif, 1936), which may make compliance "
+                     "with the request feel normal.",
         "mitre_ref": "T1566 Phishing",
         "keywords": [
             "everyone", "thousands", "millions", "most people", "join",
@@ -122,10 +122,12 @@ MANIPULATION_VECTORS = {
     "familiarity": {
         "label": "Familiarity / False Intimacy",
         "bias": "Mere Exposure Effect + In-group Bias",
-        "mechanism": "Contextual details that mirror the target's environment create "
-                     "a false sense of pre-existing relationship, reducing default "
-                     "skepticism toward unknown communicators.",
+        "mechanism": "Contextual details that mirror the target's environment may create "
+                     "a false sense of an existing relationship and lower default "
+                     "scepticism toward unknown senders.",
         "mitre_ref": "T1585.001 Establish Accounts: Social Media Accounts; T1656 Impersonation",
+        # The false-intimacy red flag needs 2+ of these cues (FAMILIARITY_MIN_CUES in analyzer.py):
+        # a lone "your account" is ordinary in legitimate mail.
         "keywords": [
             "your account", "your information", "as discussed", "following up",
             "as we agreed", "your team", "your organization", "your bank",
@@ -140,9 +142,9 @@ MANIPULATION_VECTORS = {
     "curiosity": {
         "label": "Curiosity / Information Gap",
         "bias": "Curiosity Gap + Zeigarnik Effect",
-        "mechanism": "Loewenstein's (1994) information-gap theory posits that partial "
-                     "information creates aversive arousal compelling gap-closure behavior, "
-                     "overriding caution in the drive to resolve uncertainty.",
+        "mechanism": "Loewenstein's (1994) information-gap theory proposes that partial "
+                     "information creates an urge to close the gap, which may override "
+                     "caution in the drive to resolve uncertainty.",
         "mitre_ref": "T1566 Phishing; T1204 User Execution",
         "keywords": [
             "you won't believe", "secret", "revealed", "discover", "click to see",
