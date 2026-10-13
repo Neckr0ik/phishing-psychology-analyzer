@@ -2,13 +2,15 @@
 Phishing Psychology Analyzer
 Run:  python main.py
 Run on custom text:  python main.py --text "Your text here"
+Run on a file:        python main.py --file suspicious_email.txt --json
 
 Analyzes text for psychological manipulation vectors used in social engineering.
 Maps detected tactics to the cognitive biases they exploit, and outputs a
-risk score, red flags, and publication-quality visualizations.
+heuristic pressure score, red flags, and visualizations.
 """
 
 import argparse
+import json
 import sys
 from src.samples import SAMPLES
 from src.analyzer import analyze, analyze_batch
@@ -36,11 +38,39 @@ def print_result(result):
             print(f"  [!] {flag}")
 
 
-def main():
+def to_dict(result) -> dict:
+    return {
+        "label": result.label,
+        "composite_score": result.composite_score,
+        "risk_level": result.risk_level["id"],
+        "dominant_vectors": result.dominant_vectors,
+        "flags": result.flags,
+        "vectors": {vid: {"score": v.score, "matched_keywords": v.matched_keywords,
+                          "bias": v.bias, "mitre_ref": MANIPULATION_VECTORS[vid]["mitre_ref"]}
+                    for vid, v in result.vectors.items()},
+        "vader": result.vader_scores,
+        "word_count": result.word_count,
+    }
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Phishing Psychology Analyzer")
-    parser.add_argument("--text", "-t", type=str, help="Analyze a custom text string")
+    src = parser.add_mutually_exclusive_group()
+    src.add_argument("--text", "-t", type=str, help="Analyze a custom text string")
+    src.add_argument("--file", "-f", type=str, help="Analyze the text of a file (e.g. a saved email body)")
+    parser.add_argument("--json", action="store_true", help="Print machine-readable JSON (single input only)")
     parser.add_argument("--no-charts", action="store_true", help="Skip chart generation")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+
+    if args.file:
+        with open(args.file, encoding="utf-8", errors="replace") as f:
+            args.text = f.read()
+
+    if args.json:
+        if not args.text:
+            parser.error("--json requires --text or --file")
+        print(json.dumps(to_dict(analyze(args.text, label=args.file or "Custom Input")), indent=2))
+        return 0
 
     print("Phishing Psychology Analyzer")
     print("=" * 60)
@@ -48,12 +78,12 @@ def main():
     print("=" * 60)
 
     if args.text:
-        result = analyze(args.text, label="Custom Input")
+        result = analyze(args.text, label=args.file or "Custom Input")
         print_result(result)
         if not args.no_charts:
             f = plot_radar(result)
             print(f"\n  Chart saved -> {f}")
-        return
+        return 0
 
     print("\n[1/3] Analyzing sample texts...")
     results = analyze_batch(SAMPLES)
@@ -90,17 +120,19 @@ def main():
             print(f"  {level:8s}: {len(items)} sample(s)")
 
     print()
-    print("KEY INSIGHT")
+    print("HOW TO READ THIS")
     print("-" * 60)
-    print("The highest-risk samples combine fear_threat + urgency + authority,")
-    print("a pattern Cialdini (1984) identifies as 'influence stacking' — where")
-    print("multiple compliance triggers compound each other's effect, overwhelming")
-    print("the target's ability to pause and apply critical evaluation.")
+    print("The top-scoring samples stack several levers at once (urgency, fear,")
+    print("authority, reward). Legitimate marketing uses some of the same levers,")
+    print("so the score measures persuasion pressure, not proof of malice.")
+    print("Always combine it with sender, link and header checks.")
     print()
     print("All charts and report saved to output/")
     print()
-    print("TIP: Run  python main.py --text 'your message here'  to analyze custom text.")
+    print("TIP: python main.py --text 'your message here'   analyze custom text")
+    print("     python main.py --file email.txt --json      JSON for pipelines")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

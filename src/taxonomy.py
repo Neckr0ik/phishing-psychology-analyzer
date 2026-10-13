@@ -6,7 +6,9 @@ Theoretical grounding:
 - Cialdini, R. B. (1984). Influence: The Psychology of Persuasion.
 - Kahneman, D. (2011). Thinking, Fast and Slow.
 - Loewenstein, G. (1994). The Psychology of Curiosity (Information Gap Theory).
-- MITRE ATT&CK Framework (enterprise.attack.mitre.org) for tactic classification.
+- MITRE ATT&CK (attack.mitre.org): `mitre_ref` lists the closest ATT&CK technique IDs
+  for the delivery channel. ATT&CK does not classify psychological levers itself, so the
+  mapping is approximate context, not an official ATT&CK categorisation.
 """
 
 MANIPULATION_VECTORS = {
@@ -15,7 +17,7 @@ MANIPULATION_VECTORS = {
         "bias": "Loss Aversion + Availability Heuristic",
         "mechanism": "Artificially compressed time horizons prevent System 2 (deliberate) reasoning, "
                      "forcing reactive System 1 responses based on perceived loss.",
-        "mitre_ref": "T1566 - Phishing; Social Engineering via Temporal Pressure",
+        "mitre_ref": "T1566 Phishing; T1598 Phishing for Information",
         "keywords": [
             "urgent", "immediately", "right now", "act now", "expires", "expiring",
             "deadline", "limited time", "hours left", "minutes left", "today only",
@@ -32,7 +34,7 @@ MANIPULATION_VECTORS = {
         "bias": "Authority Bias + Halo Effect",
         "mechanism": "Invokes legitimate institutional trust cues, transferring credibility "
                      "to the malicious actor and suppressing skeptical evaluation.",
-        "mitre_ref": "T1585 - Establish Accounts; T1656 - Impersonation",
+        "mitre_ref": "T1656 Impersonation; T1585 Establish Accounts",
         "keywords": [
             "official", "verified", "authorized", "certified", "compliance",
             "ceo", "chief executive", "director", "president", "it department",
@@ -50,7 +52,7 @@ MANIPULATION_VECTORS = {
         "bias": "Negativity Bias + Loss Aversion + Threat Appraisal",
         "mechanism": "Activates the amygdala-driven threat response, elevating cortisol and "
                      "narrowing attention to the perceived threat while reducing analytical processing.",
-        "mitre_ref": "T1566 - Phishing; Social Engineering via Fear Arousal",
+        "mitre_ref": "T1566 Phishing",
         "keywords": [
             "suspended", "compromised", "hacked", "breach", "breach detected",
             "virus", "malware", "ransomware", "unauthorized", "unauthorized access",
@@ -69,7 +71,7 @@ MANIPULATION_VECTORS = {
         "bias": "Scarcity Heuristic + FOMO",
         "mechanism": "Perceived scarcity elevates subjective value (Brock, 1968) and "
                      "triggers fear of missing out, accelerating commitment decisions.",
-        "mitre_ref": "T1566 - Social Engineering via Artificial Scarcity",
+        "mitre_ref": "T1566 Phishing",
         "keywords": [
             "limited", "exclusive", "only a few", "selected", "special offer",
             "one-time", "running out", "few remaining", "rare opportunity",
@@ -87,7 +89,7 @@ MANIPULATION_VECTORS = {
         "mechanism": "Unsolicited gifts activate the reciprocity norm (Cialdini, 1984), "
                      "creating social obligation. Variable reward schedules produce dopaminergic "
                      "engagement similar to gambling mechanisms.",
-        "mitre_ref": "T1566 - Phishing (Baiting); Social Engineering via Reward",
+        "mitre_ref": "T1566 Phishing",
         "keywords": [
             "free", "gift", "reward", "prize", "won", "winner", "congratulations",
             "selected as", "bonus", "credit", "refund", "cashback", "claim",
@@ -105,7 +107,7 @@ MANIPULATION_VECTORS = {
         "mechanism": "Uncertainty about correct behavior leads individuals to assume "
                      "that others' actions reflect superior knowledge (Sherif, 1936), "
                      "normalizing compliance with the request.",
-        "mitre_ref": "T1566 - Social Engineering via Consensus Manufacturing",
+        "mitre_ref": "T1566 Phishing",
         "keywords": [
             "everyone", "thousands", "millions", "most people", "join",
             "community", "trusted by", "popular", "trending", "your peers",
@@ -123,7 +125,7 @@ MANIPULATION_VECTORS = {
         "mechanism": "Contextual details that mirror the target's environment create "
                      "a false sense of pre-existing relationship, reducing default "
                      "skepticism toward unknown communicators.",
-        "mitre_ref": "T1585.001 - Social Media Accounts; Pretexting",
+        "mitre_ref": "T1585.001 Establish Accounts: Social Media Accounts; T1656 Impersonation",
         "keywords": [
             "your account", "your information", "as discussed", "following up",
             "as we agreed", "your team", "your organization", "your bank",
@@ -141,7 +143,7 @@ MANIPULATION_VECTORS = {
         "mechanism": "Loewenstein's (1994) information-gap theory posits that partial "
                      "information creates aversive arousal compelling gap-closure behavior, "
                      "overriding caution in the drive to resolve uncertainty.",
-        "mitre_ref": "T1566 - Phishing (Clickbait); Social Engineering via Curiosity",
+        "mitre_ref": "T1566 Phishing; T1204 User Execution",
         "keywords": [
             "you won't believe", "secret", "revealed", "discover", "click to see",
             "find out", "what they don't want you to know", "exclusive access",

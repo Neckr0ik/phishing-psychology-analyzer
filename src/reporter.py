@@ -4,6 +4,7 @@ Report and visualization generator for phishing psychology analysis.
 
 from __future__ import annotations
 import os
+import re
 from datetime import datetime
 from typing import List
 
@@ -17,7 +18,10 @@ from .analyzer import AnalysisResult
 from .taxonomy import MANIPULATION_VECTORS, RISK_LEVELS
 
 OUTPUT_DIR = "output"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+
+def _ensure_dir(filename: str) -> None:
+    os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
 
 
 # ── Per-sample radar chart ────────────────────────────────────────────────────
@@ -57,8 +61,9 @@ def plot_radar(result: AnalysisResult, filename: str = None) -> str:
     )
 
     if filename is None:
-        safe = result.label.lower().replace(" ", "_").replace("/", "_")[:30]
+        safe = re.sub(r"[^a-z0-9]+", "_", result.label.lower()).strip("_")[:30]
         filename = os.path.join(OUTPUT_DIR, f"radar_{safe}.png")
+    _ensure_dir(filename)
     plt.tight_layout()
     plt.savefig(filename, dpi=130, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close()
@@ -103,6 +108,7 @@ def plot_comparison(results: List[AnalysisResult], filename: str = None) -> str:
 
     if filename is None:
         filename = os.path.join(OUTPUT_DIR, "comparison_all.png")
+    _ensure_dir(filename)
     plt.tight_layout()
     plt.savefig(filename, dpi=130, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close()
@@ -144,6 +150,7 @@ def plot_heatmap(results: List[AnalysisResult], filename: str = None) -> str:
 
     if filename is None:
         filename = os.path.join(OUTPUT_DIR, "heatmap_vectors.png")
+    _ensure_dir(filename)
     plt.tight_layout()
     plt.savefig(filename, dpi=130, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close()
@@ -159,6 +166,10 @@ def write_report(results: List[AnalysisResult], filename: str = None) -> str:
     lines = [
         "# Phishing Psychology Analysis Report",
         f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*",
+        "",
+        "> Heuristic keyword analysis of persuasion pressure. A high score means the text "
+        "leans on several social-engineering levers; it does not prove the message is malicious, "
+        "and a low score does not prove it is safe (check sender, links and headers too).",
         "",
         "---",
         "",
@@ -201,11 +212,12 @@ def write_report(results: List[AnalysisResult], filename: str = None) -> str:
         if active:
             lines.append("**Active Manipulation Vectors:**")
             lines.append("")
-            lines.append("| Vector | Score | Cognitive Bias Exploited | Matched Keywords |")
-            lines.append("|:---|:---:|:---|:---|")
+            lines.append("| Vector | Score | Cognitive Bias Exploited | Matched Keywords | ATT&CK context |")
+            lines.append("|:---|:---:|:---|:---|:---|")
             for v in active:
                 kws = ", ".join(f"`{kw}`" for kw in v.matched_keywords[:5])
-                lines.append(f"| {v.label} | {v.score:.0f} | {v.bias} | {kws} |")
+                mitre = MANIPULATION_VECTORS[v.vector_id]["mitre_ref"]
+                lines.append(f"| {v.label} | {v.score:.0f} | {v.bias} | {kws} | {mitre} |")
             lines.append("")
 
         lines += [
@@ -218,6 +230,7 @@ def write_report(results: List[AnalysisResult], filename: str = None) -> str:
             "",
         ]
 
+    _ensure_dir(filename)
     with open(filename, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
