@@ -6,7 +6,7 @@
 
 **Core question:** what psychological levers does a message pull, and how many does it stack at once?
 
-Most phishing filters look at URLs, headers and sender reputation. This tool looks at the **wording**. It detects eight manipulation vectors, maps each to the cognitive bias it exploits and to the closest MITRE ATT&CK technique, and combines them into a 0–100 composite score with red flags. The intended uses are security-awareness training and helping a human triage suspicious messages.
+Most phishing filters look at URLs, headers and sender reputation. This tool looks at the **wording**. It detects eight manipulation vectors, maps each to the cognitive bias it may exploit and to the closest MITRE ATT&CK technique, and combines them into a 0–100 composite score with red flags. The intended uses are security-awareness training and helping a human triage suspicious messages.
 
 ---
 
@@ -17,16 +17,23 @@ Real output of `python main.py --no-charts` (excerpt):
 ```
   Spear Phishing (CEO Fraud)
   [##################  ] 92/100  [CRIT] CRITICAL RISK
+  VADER: neg=0.06  pos=0.03  compound=-0.42
   Dominant vectors: Urgency / Time Pressure | Fear / Threat Appraisal | Scarcity / Exclusivity
+  [!] Threat-based coercion detected — may discourage careful evaluation
+  [!] Artificial urgency — may push a reply before deliberate (System 2) thinking
   [!] Authority + threat combination — classic spear-phishing pattern
+  [!] Information gap — may prompt a click before critical evaluation
   [!] CRITICAL: Multiple coordinated manipulation vectors detected
 
   Marketing Email (legitimate)
   [###########         ] 55/100  [HIGH] HIGH RISK
+  VADER: neg=0.04  pos=0.28  compound=0.91
   Dominant vectors: Scarcity / Exclusivity | Social Proof / Consensus
 
   Bank Notification (legitimate)
   [####                ] 22/100  [LOW] LOW RISK
+  VADER: neg=0.00  pos=0.15  compound=0.75
+  Dominant vectors: Familiarity / False Intimacy | Authority / Impersonation
 ```
 
 The legitimate marketing email scores HIGH because it really does use scarcity and social proof. **The score measures persuasion pressure, not malice.**
@@ -35,7 +42,7 @@ The legitimate marketing email scores HIGH because it really does use scarcity a
 
 ## The eight vectors
 
-| Vector | Cognitive bias exploited | ATT&CK context |
+| Vector | Cognitive bias it may exploit | ATT&CK context |
 |:---|:---|:---|
 | **Urgency / Time Pressure** | Loss aversion, availability heuristic | T1566, T1598 |
 | **Authority / Impersonation** | Authority bias, halo effect | T1656, T1585 |
@@ -54,10 +61,11 @@ ATT&CK catalogues adversary techniques. It does not classify psychological lever
 
 The code in `src/analyzer.py` does the following:
 
-1. **Keyword matching.** Distinct whole-word/phrase matches per vector, so repeating "act now" five times counts once, and "won" does not match "wonderful".
-2. **Vector score.** `base = min(matches / (0.15 × list_size) × 100, 90)`, then `score = min(base × weight, 100)`. The weights (fear 1.8, urgency 1.5, authority 1.4 …) are design choices, not empirical estimates.
+1. **Normalisation and keyword matching.** Text is NFKC-normalised, curly quotes are folded to straight ones and invisible format characters (zero-width space/joiner, soft hyphen, bidi controls) are removed, so "URG\u200bENT" still matches "urgent"; such characters inside words add their own red flag. Matches are distinct whole words/phrases per vector, so repeating "act now" five times counts once, and "won" does not match "wonderful".
+2. **Vector score.** `base = min(matches / max(0.15 × list_size, 1) × 100, 90)`, then `score = min(base × weight, 100)`. The `max(…, 1)` only matters for lists shorter than 7 keywords; every built-in list is longer, so in practice 15% of a list's keywords reaches the 90 cap. The weights (fear 1.8, urgency 1.5, authority 1.4 …) are design choices, not empirical estimates.
 3. **Composite.** The mean of the top 3 vectors, multiplied by **1.10 / 1.20 / 1.30** when 3 / 4 / 5+ vectors are active (score > 12), and by `1 + 0.2 × VADER_neg` when VADER negativity exceeds 0.3. It is capped at 100.
 4. **Risk bands.** LOW < 25 ≤ MEDIUM < 50 ≤ HIGH < 75 ≤ CRITICAL.
+5. **Red flags.** Rules on the vector scores (for example fear > 25, authority > 20 together with fear > 20). The false-intimacy flag also needs at least two familiarity cues, because a single "your account" is ordinary in legitimate mail.
 
 The tests in `tests/test_analyzer.py` pin these formulas, so this section and the code stay in sync.
 
@@ -72,7 +80,7 @@ pip install -r requirements.txt
 
 python main.py                                     # 8 fictional samples -> charts + report in output/
 python main.py --text "URGENT: verify your account immediately."
-python main.py --file suspicious_email.txt --json  # JSON for pipelines / SOAR triage notes
+python main.py --file suspicious_email.txt --json  # JSON for pipelines / SOAR triage notes (one message)
 python main.py --no-charts
 
 pytest -q                                          # offline test suite

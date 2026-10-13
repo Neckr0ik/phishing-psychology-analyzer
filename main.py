@@ -45,6 +45,7 @@ def to_dict(result) -> dict:
         "risk_level": result.risk_level["id"],
         "dominant_vectors": result.dominant_vectors,
         "flags": result.flags,
+        "hidden_characters": result.hidden_characters,
         "vectors": {vid: {"score": v.score, "matched_keywords": v.matched_keywords,
                           "bias": v.bias, "mitre_ref": MANIPULATION_VECTORS[vid]["mitre_ref"]}
                     for vid, v in result.vectors.items()},
@@ -62,13 +63,20 @@ def main(argv=None):
     parser.add_argument("--no-charts", action="store_true", help="Skip chart generation")
     args = parser.parse_args(argv)
 
-    if args.file:
-        with open(args.file, encoding="utf-8", errors="replace") as f:
-            args.text = f.read()
+    if args.file is not None:
+        try:
+            with open(args.file, encoding="utf-8", errors="replace") as f:
+                args.text = f.read()
+        except OSError as e:
+            parser.error(f"cannot read --file {args.file}: {e.strerror or e}")
+
+    if args.text is not None and not args.text.strip():
+        parser.error(f"{'--file ' + args.file if args.file is not None else '--text'} is empty; nothing to analyze")
 
     if args.json:
-        if not args.text:
-            parser.error("--json requires --text or --file")
+        if args.text is None:
+            parser.error("--json works on one message: add --text \"...\" or --file PATH "
+                         "(the bundled samples have no JSON output)")
         print(json.dumps(to_dict(analyze(args.text, label=args.file or "Custom Input")), indent=2))
         return 0
 
@@ -77,7 +85,7 @@ def main(argv=None):
     print("Cognitive bias exploitation detector for social engineering")
     print("=" * 60)
 
-    if args.text:
+    if args.text is not None:
         result = analyze(args.text, label=args.file or "Custom Input")
         print_result(result)
         if not args.no_charts:
